@@ -25,7 +25,7 @@ var dbResetCmd = &cobra.Command{
 
 		return execInBackend(cmd, cfg, []string{
 			"sh", "-c",
-			"prisma migrate reset --schema ./prisma/schema.prisma --force",
+			"cd /app/shared && prisma migrate reset --schema ./prisma/schema.prisma --force",
 		})
 	},
 }
@@ -41,7 +41,7 @@ var dbMigrateCmd = &cobra.Command{
 
 		return execInBackend(cmd, cfg, []string{
 			"sh", "-c",
-			"prisma migrate deploy --schema ./prisma/schema.prisma",
+			"cd /app/shared && prisma migrate deploy --schema ./prisma/schema.prisma",
 		})
 	},
 }
