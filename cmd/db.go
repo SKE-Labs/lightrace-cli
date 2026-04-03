@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/SKE-Labs/lightrace-cli/internal/config"
 	"github.com/SKE-Labs/lightrace-cli/internal/docker"
 	"github.com/spf13/cobra"
@@ -60,7 +60,7 @@ func execInBackend(cmd *cobra.Command, cfg *config.Config, execCmd []string) err
 
 	name := docker.ContainerName(cfg.ProjectID, "backend")
 
-	exec, err := c.ContainerExecCreate(ctx, name, types.ExecConfig{
+	exec, err := c.ContainerExecCreate(ctx, name, container.ExecOptions{
 		Cmd:          execCmd,
 		AttachStdout: true,
 		AttachStderr: true,
@@ -69,7 +69,7 @@ func execInBackend(cmd *cobra.Command, cfg *config.Config, execCmd []string) err
 		return fmt.Errorf("cannot exec in %s: %w", name, err)
 	}
 
-	resp, err := c.ContainerExecAttach(ctx, exec.ID, types.ExecStartCheck{})
+	resp, err := c.ContainerExecAttach(ctx, exec.ID, container.ExecAttachOptions{})
 	if err != nil {
 		return err
 	}

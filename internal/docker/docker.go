@@ -8,15 +8,13 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 )
-
-func intPtr(i int) *int { return &i }
 
 const LabelProject = "io.lightrace.project"
 
@@ -49,7 +47,7 @@ func EnsureNetwork(ctx context.Context, projectID string) error {
 	}
 
 	name := NetworkName(projectID)
-	networks, err := c.NetworkList(ctx, types.NetworkListOptions{
+	networks, err := c.NetworkList(ctx, network.ListOptions{
 		Filters: filters.NewArgs(filters.Arg("name", name)),
 	})
 	if err != nil {
@@ -59,7 +57,7 @@ func EnsureNetwork(ctx context.Context, projectID string) error {
 		return nil
 	}
 
-	_, err = c.NetworkCreate(ctx, name, types.NetworkCreate{
+	_, err = c.NetworkCreate(ctx, name, network.CreateOptions{
 		Driver: "bridge",
 		Labels: map[string]string{LabelProject: projectID},
 	})
@@ -72,12 +70,11 @@ func PullImage(ctx context.Context, img string) error {
 		return err
 	}
 
-	reader, err := c.ImagePull(ctx, img, types.ImagePullOptions{})
+	reader, err := c.ImagePull(ctx, img, image.PullOptions{})
 	if err != nil {
 		return fmt.Errorf("pulling %s: %w", img, err)
 	}
 	defer reader.Close()
-	// Consume the pull output
 	io.Copy(os.Stdout, reader)
 	return nil
 }
@@ -87,11 +84,11 @@ type RunConfig struct {
 	Service      string
 	Image        string
 	Env          []string
-	Ports        map[string]string // container port -> host port (e.g. "5432/tcp" -> "5435")
+	Ports        map[string]string // container port -> host port
 	Volumes      map[string]string // host path -> container path
 	HealthCmd    []string
 	NetworkName  string
-	NetworkAlias string // DNS name within network
+	NetworkAlias string
 	Cmd          []string
 }
 
@@ -103,10 +100,8 @@ func RunContainer(ctx context.Context, rc RunConfig) (string, error) {
 
 	name := ContainerName(rc.ProjectID, rc.Service)
 
-	// Remove existing container if present
-	_ = c.ContainerRemove(ctx, name, types.ContainerRemoveOptions{Force: true})
+	_ = c.ContainerRemove(ctx, name, container.RemoveOptions{Force: true})
 
-	// Port bindings
 	portBindings := nat.PortMap{}
 	exposedPorts := nat.PortSet{}
 	for containerPort, hostPort := range rc.Ports {
@@ -115,7 +110,6 @@ func RunContainer(ctx context.Context, rc RunConfig) (string, error) {
 		portBindings[cp] = []nat.PortBinding{{HostIP: "0.0.0.0", HostPort: hostPort}}
 	}
 
-	// Health check
 	var healthcheck *container.HealthConfig
 	if len(rc.HealthCmd) > 0 {
 		healthcheck = &container.HealthConfig{
@@ -127,7 +121,6 @@ func RunContainer(ctx context.Context, rc RunConfig) (string, error) {
 		}
 	}
 
-	// Volume binds
 	var binds []string
 	for hostPath, containerPath := range rc.Volumes {
 		binds = append(binds, fmt.Sprintf("%s:%s", hostPath, containerPath))
@@ -166,7 +159,7 @@ func RunContainer(ctx context.Context, rc RunConfig) (string, error) {
 		return "", fmt.Errorf("creating %s: %w", name, err)
 	}
 
-	if err := c.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
+	if err := c.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
 		return "", fmt.Errorf("starting %s: %w", name, err)
 	}
 
@@ -192,7 +185,6 @@ func WaitHealthy(ctx context.Context, projectID, service string, timeout time.Du
 		}
 
 		if inspect.State.Health == nil {
-			// No health check configured — consider healthy if running
 			if inspect.State.Running {
 				return nil
 			}
@@ -216,7 +208,7 @@ func StopContainers(ctx context.Context, projectID string) error {
 		return err
 	}
 
-	containers, err := c.ContainerList(ctx, types.ContainerListOptions{
+	containers, err := c.ContainerList(ctx, container.ListOptions{
 		All:     true,
 		Filters: filters.NewArgs(filters.Arg("label", LabelProject+"="+projectID)),
 	})
@@ -226,9 +218,9 @@ func StopContainers(ctx context.Context, projectID string) error {
 
 	for _, ctr := range containers {
 		fmt.Printf("  Stopping %s...\n", ctr.Names[0])
-		timeout := 10 * time.Second
-		_ = c.ContainerStop(ctx, ctr.ID, container.StopOptions{Timeout: intPtr(int(timeout.Seconds()))})
-		_ = c.ContainerRemove(ctx, ctr.ID, types.ContainerRemoveOptions{})
+		timeout := 10
+		_ = c.ContainerStop(ctx, ctr.ID, container.StopOptions{Timeout: &timeout})
+		_ = c.ContainerRemove(ctx, ctr.ID, container.RemoveOptions{})
 	}
 
 	return nil

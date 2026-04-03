@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/SKE-Labs/lightrace-cli/internal/config"
 	"github.com/SKE-Labs/lightrace-cli/internal/docker"
@@ -29,7 +29,7 @@ var statusCmd = &cobra.Command{
 			return err
 		}
 
-		containers, err := c.ContainerList(ctx, types.ContainerListOptions{
+		containers, err := c.ContainerList(ctx, container.ListOptions{
 			All:     true,
 			Filters: filters.NewArgs(filters.Arg("label", docker.LabelProject+"="+cfg.ProjectID)),
 		})
@@ -60,7 +60,7 @@ func init() {
 	statusCmd.Flags().StringVarP(&statusOutput, "output", "o", "pretty", "Output format: pretty, json, env")
 }
 
-func printPretty(cfg *config.Config, containers []types.Container, url string) error {
+func printPretty(cfg *config.Config, containers []container.Summary, url string) error {
 	fmt.Println("Lightrace Status")
 	fmt.Println()
 
@@ -91,7 +91,7 @@ func printPretty(cfg *config.Config, containers []types.Container, url string) e
 	return nil
 }
 
-func printJSON(cfg *config.Config, containers []types.Container, url string) error {
+func printJSON(cfg *config.Config, containers []container.Summary, url string) error {
 	services := make([]map[string]string, 0, len(containers))
 	for _, ctr := range containers {
 		name := "unknown"

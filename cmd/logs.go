@@ -5,7 +5,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/SKE-Labs/lightrace-cli/internal/config"
 	"github.com/SKE-Labs/lightrace-cli/internal/docker"
 	"github.com/spf13/cobra"
@@ -37,7 +37,7 @@ var logsCmd = &cobra.Command{
 
 		for _, svc := range services {
 			name := docker.ContainerName(cfg.ProjectID, svc)
-			reader, err := c.ContainerLogs(ctx, name, types.ContainerLogsOptions{
+			reader, err := c.ContainerLogs(ctx, name, container.LogsOptions{
 				ShowStdout: true,
 				ShowStderr: true,
 				Tail:       logsTail,
