@@ -9,13 +9,17 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           registry-url: https://registry.npmjs.org
+
+      - name: Ensure latest npm (trusted publishing requires >= 11.5.1)
+        run: npm install -g npm@latest
 
       - name: Set version from tag
         run: |
@@ -26,7 +30,5 @@ jobs:
       - name: Install deps
         run: cd npm && npm install
 
-      - name: Publish
-        run: cd npm && npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish (OIDC trusted publishing — no token needed)
+        run: cd npm && npm publish

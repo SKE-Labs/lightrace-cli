@@ -1,8 +1,11 @@
 {
-  "name": "lightrace-cli",
+  "name": "@lightrace/cli",
   "version": "0.0.0-automated",
   "description": "CLI for self-hosting Lightrace — LLM tracing and observability",
-  "repository": "SKE-Labs/lightrace-cli",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SKE-Labs/lightrace-cli.git"
+  },
   "homepage": "https://github.com/SKE-Labs/lightrace-cli",
   "bugs": "https://github.com/SKE-Labs/lightrace-cli/issues",
   "license": "MIT",
@@ -10,6 +13,10 @@
   "type": "module",
   "engines": {
     "npm": ">=8"
+  },
+  "publishConfig": {
+    "provenance": true,
+    "access": "public"
   },
   "files": [
     "scripts"
