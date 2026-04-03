@@ -33,11 +33,11 @@ func Client() (*client.Client, error) {
 }
 
 func NetworkName(projectID string) string {
-	return fmt.Sprintf("lightrace_net_%s", projectID)
+	return fmt.Sprintf("%s_net", projectID)
 }
 
 func ContainerName(projectID, service string) string {
-	return fmt.Sprintf("lightrace-%s-%s", projectID, service)
+	return fmt.Sprintf("%s-%s", projectID, service)
 }
 
 func EnsureNetwork(ctx context.Context, projectID string) error {

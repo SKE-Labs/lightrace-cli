@@ -144,7 +144,7 @@ func Run(ctx context.Context, cfg *config.Config, opts Options) error {
 				fmt.Sprintf("INTERNAL_SECRET=%s", cfg.Internal.Secret),
 				"WS_PORT=3003",
 			},
-			HealthCmd: []string{"wget -qO- http://localhost:3001/api/public/health || exit 1"},
+			HealthCmd: []string{"wget -qO- http://localhost:3001/login || exit 1"},
 		}); err != nil {
 			return err
 		}
