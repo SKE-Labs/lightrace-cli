@@ -75,7 +75,7 @@ func PullImage(ctx context.Context, img string) error {
 		return fmt.Errorf("pulling %s: %w", img, err)
 	}
 	defer reader.Close()
-	io.Copy(os.Stdout, reader)
+	_, _ = io.Copy(os.Stdout, reader)
 	return nil
 }
 

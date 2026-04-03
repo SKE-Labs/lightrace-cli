@@ -1,6 +1,6 @@
 {
   "name": "@lightrace/cli",
-  "version": "0.0.0-automated",
+  "version": "0.0.1",
   "description": "CLI for self-hosting Lightrace — LLM tracing and observability",
   "repository": {
     "type": "git",

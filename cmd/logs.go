@@ -50,11 +50,11 @@ var logsCmd = &cobra.Command{
 
 			if len(args) > 0 {
 				// Streaming mode for single service
-				io.Copy(os.Stdout, reader)
+				_, _ = io.Copy(os.Stdout, reader)
 			} else {
 				// Dump last N lines for all services
 				fmt.Printf("── %s ──\n", svc)
-				io.Copy(os.Stdout, reader)
+				_, _ = io.Copy(os.Stdout, reader)
 				fmt.Println()
 			}
 			reader.Close()
