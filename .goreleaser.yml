@@ -36,6 +36,7 @@ brews:
   - repository:
       owner: SKE-Labs
       name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
     name: lightrace
     homepage: https://github.com/SKE-Labs/lightrace
     description: CLI for self-hosting Lightrace — LLM tracing and observability
