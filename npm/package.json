@@ -19,6 +19,7 @@
     "access": "public"
   },
   "files": [
+    "bin",
     "scripts"
   ],
   "scripts": {
@@ -28,7 +29,6 @@
     "lightrace": "bin/lightrace"
   },
   "dependencies": {
-    "bin-links": "^6.0.0",
     "https-proxy-agent": "^8.0.0",
     "node-fetch": "^3.3.2",
     "tar": "^7.0.0"

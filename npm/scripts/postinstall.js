@@ -6,7 +6,6 @@
  */
 "use strict";
 
-import binLinks from "bin-links";
 import { createHash } from "crypto";
 import fs from "fs";
 import fetch from "node-fetch";
@@ -131,11 +130,6 @@ async function main() {
   await new Promise((resolve, reject) => {
     untar.on("error", reject);
     untar.on("end", resolve);
-  });
-
-  await binLinks({
-    path: path.resolve("."),
-    pkg: { ...pkg, bin: { lightrace: binPath } },
   });
 
   console.info("Installed Lightrace CLI successfully");
