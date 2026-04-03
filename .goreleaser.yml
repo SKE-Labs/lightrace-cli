@@ -1,0 +1,73 @@
+version: 2
+
+project_name: lightrace
+
+builds:
+  - id: lightrace
+    binary: lightrace
+    main: .
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/SKE-Labs/lightrace-cli/cmd.Version={{.Version}}
+      - -X github.com/SKE-Labs/lightrace-cli/cmd.Commit={{.ShortCommit}}
+    flags:
+      - -trimpath
+
+archives:
+  - id: default
+    format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        format: zip
+
+brews:
+  - repository:
+      owner: SKE-Labs
+      name: homebrew-tap
+    name: lightrace
+    homepage: https://github.com/SKE-Labs/lightrace
+    description: CLI for self-hosting Lightrace — LLM tracing and observability
+    license: MIT
+    install: |
+      bin.install "lightrace"
+
+nfpms:
+  - id: packages
+    package_name: lightrace
+    vendor: SKE Labs
+    homepage: https://github.com/SKE-Labs/lightrace
+    description: CLI for self-hosting Lightrace — LLM tracing and observability
+    license: MIT
+    formats:
+      - deb
+      - rpm
+      - apk
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\(.+\))?\!?:.+$'
+      order: 0
+    - title: Bug Fixes
+      regexp: '^.*?fix(\(.+\))?\!?:.+$'
+      order: 1
+    - title: Others
+      order: 999
+
+release:
+  draft: true
+  prerelease: auto

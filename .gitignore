@@ -1,0 +1,27 @@
+# Binaries
+lightrace
+lightrace.exe
+*.exe
+*.dll
+*.so
+*.dylib
+dist/
+
+# Test binaries
+*.test
+
+# Go
+vendor/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment
+.env
