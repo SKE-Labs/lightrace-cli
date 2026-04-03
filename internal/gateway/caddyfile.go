@@ -11,12 +11,15 @@ import (
 // GenerateCaddyfile creates a Caddyfile for the given config and writes it
 // to a temporary file, returning the path. The caller is responsible for cleanup.
 func GenerateCaddyfile(cfg *config.Config) (string, error) {
-	domain := cfg.Gateway.Domain
-	if domain == "" {
-		domain = "localhost"
+	var globalOpts, address string
+	if cfg.Gateway.Domain != "" {
+		address = cfg.Gateway.Domain
+	} else {
+		address = fmt.Sprintf(":%d", cfg.Gateway.Port)
+		globalOpts = "{\n\tauto_https off\n}\n\n"
 	}
 
-	content := fmt.Sprintf(`%s:%d {
+	content := fmt.Sprintf(`%s%s {
 	handle /api/public/* {
 		reverse_proxy lightrace-backend:3002
 	}
@@ -33,7 +36,7 @@ func GenerateCaddyfile(cfg *config.Config) (string, error) {
 		reverse_proxy lightrace-frontend:3001
 	}
 }
-`, domain, cfg.Gateway.Port)
+`, globalOpts, address)
 
 	dir := filepath.Join(config.ConfigDir, ".runtime")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
