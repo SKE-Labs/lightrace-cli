@@ -168,6 +168,71 @@ func RunContainer(ctx context.Context, rc RunConfig) (string, error) {
 	return resp.ID, nil
 }
 
+// RunOnce starts a container, streams its output, waits for it to exit,
+// removes it, and returns the exit code.
+func RunOnce(ctx context.Context, rc RunConfig) (int, error) {
+	c, err := Client()
+	if err != nil {
+		return -1, err
+	}
+
+	name := ContainerName(rc.ProjectID, rc.Service)
+	_ = c.ContainerRemove(ctx, name, container.RemoveOptions{Force: true})
+
+	containerConfig := &container.Config{
+		Image:  rc.Image,
+		Env:    rc.Env,
+		Labels: map[string]string{LabelProject: rc.ProjectID},
+	}
+	if len(rc.Cmd) > 0 {
+		containerConfig.Cmd = rc.Cmd
+	}
+
+	networkConfig := &network.NetworkingConfig{}
+	if rc.NetworkName != "" {
+		alias := rc.NetworkAlias
+		if alias == "" {
+			alias = rc.Service
+		}
+		networkConfig.EndpointsConfig = map[string]*network.EndpointSettings{
+			rc.NetworkName: {Aliases: []string{alias}},
+		}
+	}
+
+	resp, err := c.ContainerCreate(ctx, containerConfig, &container.HostConfig{}, networkConfig, nil, name)
+	if err != nil {
+		return -1, fmt.Errorf("creating %s: %w", name, err)
+	}
+
+	defer func() {
+		_ = c.ContainerRemove(ctx, resp.ID, container.RemoveOptions{Force: true})
+	}()
+
+	if err := c.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
+		return -1, fmt.Errorf("starting %s: %w", name, err)
+	}
+
+	// Stream logs
+	logs, err := c.ContainerLogs(ctx, resp.ID, container.LogsOptions{
+		ShowStdout: true,
+		ShowStderr: true,
+		Follow:     true,
+	})
+	if err == nil {
+		_, _ = io.Copy(os.Stdout, logs)
+		logs.Close()
+	}
+
+	// Wait for exit
+	waitCh, errCh := c.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
+	select {
+	case result := <-waitCh:
+		return int(result.StatusCode), nil
+	case err := <-errCh:
+		return -1, err
+	}
+}
+
 func WaitHealthy(ctx context.Context, projectID, service string, timeout time.Duration) error {
 	c, err := Client()
 	if err != nil {

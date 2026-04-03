@@ -36,7 +36,7 @@ func Run(ctx context.Context, cfg *config.Config, opts Options) error {
 	}
 
 	// 2. Pull images in sequence (could be parallelized later)
-	images := []string{config.PostgresImage, config.RedisImage, cfg.BackendImage(), cfg.FrontendImage(), config.CaddyImage}
+	images := []string{config.PostgresImage, config.RedisImage, config.DefaultMigratorImage, cfg.BackendImage(), cfg.FrontendImage(), config.CaddyImage}
 	for _, img := range images {
 		fmt.Printf("Pulling %s...\n", img)
 		if err := docker.PullImage(ctx, img); err != nil {
@@ -97,7 +97,28 @@ func Run(ctx context.Context, cfg *config.Config, opts Options) error {
 		}
 	}
 
-	// 5. Start Backend
+	// 5. Run database migrations
+	if !isExcluded("postgres", opts.Exclude) {
+		fmt.Println("Running migrations...")
+		exitCode, err := docker.RunOnce(ctx, docker.RunConfig{
+			ProjectID:    cfg.ProjectID,
+			Service:      "migrate",
+			Image:        config.DefaultMigratorImage,
+			NetworkName:  networkName,
+			NetworkAlias: "lightrace-migrate",
+			Env: []string{
+				fmt.Sprintf("DATABASE_URL=postgresql://lightrace:%s@lightrace-db:5432/lightrace", cfg.DB.Password),
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("migration failed: %w", err)
+		}
+		if exitCode != 0 {
+			return fmt.Errorf("migration exited with code %d", exitCode)
+		}
+	}
+
+	// 6. Start Backend
 	if !isExcluded("backend", opts.Exclude) {
 		fmt.Println("Starting Backend...")
 		if _, err := docker.RunContainer(ctx, docker.RunConfig{

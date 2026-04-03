@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/docker/docker/api/types/container"
 	"github.com/SKE-Labs/lightrace-cli/internal/config"
 	"github.com/SKE-Labs/lightrace-cli/internal/docker"
 	"github.com/spf13/cobra"
@@ -23,9 +22,9 @@ var dbResetCmd = &cobra.Command{
 			return err
 		}
 
-		return execInBackend(cmd, cfg, []string{
-			"sh", "-c",
-			"cd /app/shared && prisma migrate reset --schema ./prisma/schema.prisma --force",
+		return runMigrator(cmd, cfg, []string{
+			"pnpm", "--filter", "@lightrace/shared", "exec",
+			"prisma", "migrate", "reset", "--schema", "./prisma/schema.prisma", "--force",
 		})
 	},
 }
@@ -39,10 +38,8 @@ var dbMigrateCmd = &cobra.Command{
 			return err
 		}
 
-		return execInBackend(cmd, cfg, []string{
-			"sh", "-c",
-			"cd /app/shared && prisma migrate deploy --schema ./prisma/schema.prisma",
-		})
+		// Default CMD in migrator image is prisma migrate deploy, so no override needed.
+		return runMigrator(cmd, cfg, nil)
 	},
 }
 
@@ -51,50 +48,26 @@ func init() {
 	dbCmd.AddCommand(dbMigrateCmd)
 }
 
-func execInBackend(cmd *cobra.Command, cfg *config.Config, execCmd []string) error {
+func runMigrator(cmd *cobra.Command, cfg *config.Config, cmdOverride []string) error {
 	ctx := cmd.Context()
-	c, err := docker.Client()
-	if err != nil {
-		return err
-	}
+	networkName := docker.NetworkName(cfg.ProjectID)
 
-	name := docker.ContainerName(cfg.ProjectID, "backend")
-
-	exec, err := c.ContainerExecCreate(ctx, name, container.ExecOptions{
-		Cmd:          execCmd,
-		AttachStdout: true,
-		AttachStderr: true,
+	exitCode, err := docker.RunOnce(ctx, docker.RunConfig{
+		ProjectID:    cfg.ProjectID,
+		Service:      "migrate",
+		Image:        config.DefaultMigratorImage,
+		NetworkName:  networkName,
+		NetworkAlias: "lightrace-migrate",
+		Env: []string{
+			fmt.Sprintf("DATABASE_URL=postgresql://lightrace:%s@lightrace-db:5432/lightrace", cfg.DB.Password),
+		},
+		Cmd: cmdOverride,
 	})
 	if err != nil {
-		return fmt.Errorf("cannot exec in %s: %w", name, err)
-	}
-
-	resp, err := c.ContainerExecAttach(ctx, exec.ID, container.ExecAttachOptions{})
-	if err != nil {
 		return err
 	}
-	defer resp.Close()
-
-	// Stream output
-	buf := make([]byte, 4096)
-	for {
-		n, readErr := resp.Reader.Read(buf)
-		if n > 0 {
-			fmt.Print(string(buf[:n]))
-		}
-		if readErr != nil {
-			break
-		}
+	if exitCode != 0 {
+		return fmt.Errorf("migrator exited with code %d", exitCode)
 	}
-
-	// Check exit code
-	inspect, err := c.ContainerExecInspect(ctx, exec.ID)
-	if err != nil {
-		return err
-	}
-	if inspect.ExitCode != 0 {
-		return fmt.Errorf("command exited with code %d", inspect.ExitCode)
-	}
-
 	return nil
 }

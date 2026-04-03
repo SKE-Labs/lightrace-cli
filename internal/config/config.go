@@ -62,6 +62,7 @@ type InternalConfig struct {
 const (
 	DefaultBackendImage  = "ghcr.io/ske-labs/backend:latest"
 	DefaultFrontendImage = "ghcr.io/ske-labs/frontend:latest"
+	DefaultMigratorImage = "ghcr.io/ske-labs/migrator:latest"
 	PostgresImage        = "postgres:16-alpine"
 	RedisImage           = "redis:7-alpine"
 	CaddyImage           = "caddy:2-alpine"
