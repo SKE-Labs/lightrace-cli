@@ -146,8 +146,8 @@ Set a `domain` for automatic HTTPS via Let's Encrypt (powered by Caddy).
 ```bash
 git clone https://github.com/SKE-Labs/lightrace-cli.git
 cd lightrace-cli
-go build -o lightrace .
-./lightrace --help
+go build -o ltrace .
+./ltrace --help
 ```
 
 ## License
