@@ -1,6 +1,18 @@
-# Lightrace CLI
+<p align="center">
+  <img src="https://raw.githubusercontent.com/SKE-Labs/lightrace/main/packages/frontend/public/white_transparent.png" alt="LightRace" width="280" />
+</p>
 
-CLI tool for self-hosting [Lightrace](https://github.com/SKE-Labs/lightrace) — an open-source LLM tracing and observability platform.
+<h1 align="center">Lightrace CLI</h1>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/@lightrace/cli"><img src="https://img.shields.io/npm/v/@lightrace/cli?style=flat-square&color=ff1a1a" alt="npm version" /></a>
+  <a href="https://github.com/SKE-Labs/lightrace-cli/stargazers"><img src="https://img.shields.io/github/stars/SKE-Labs/lightrace-cli?style=flat-square" alt="GitHub stars" /></a>
+  <a href="https://github.com/SKE-Labs/lightrace-cli/blob/main/LICENSE"><img src="https://img.shields.io/github/license/SKE-Labs/lightrace-cli?style=flat-square" alt="License" /></a>
+</p>
+
+<p align="center">CLI tool for self-hosting <a href="https://github.com/SKE-Labs/lightrace">Lightrace</a> — an open-source LLM tracing and observability platform.</p>
+
+---
 
 Spin up the entire Lightrace stack (PostgreSQL, Redis, Backend, Frontend, Caddy gateway) with a single command.
 
@@ -122,6 +134,12 @@ Set a `domain` for automatic HTTPS via Let's Encrypt (powered by Caddy).
 ## Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/) (Docker Engine 20.10+)
+
+## Related
+
+- [Lightrace](https://github.com/SKE-Labs/lightrace) — the main platform (backend + frontend)
+- [lightrace-python](https://github.com/SKE-Labs/lightrace-python) — Python SDK
+- [lightrace-js](https://github.com/SKE-Labs/lightrace-js) — TypeScript/JavaScript SDK
 
 ## Development
 
