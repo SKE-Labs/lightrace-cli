@@ -6,6 +6,12 @@ Spin up the entire Lightrace stack (PostgreSQL, Redis, Backend, Frontend, Caddy 
 
 ## Install
 
+### npm (recommended)
+
+```bash
+npm install -g @lightrace/cli
+```
+
 ### Homebrew (macOS / Linux)
 
 ```bash
