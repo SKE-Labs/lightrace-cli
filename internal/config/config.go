@@ -60,8 +60,8 @@ type InternalConfig struct {
 
 // Default image versions — pinned per CLI release.
 const (
-	DefaultBackendImage  = "ghcr.io/lightrace/backend:latest"
-	DefaultFrontendImage = "ghcr.io/lightrace/frontend:latest"
+	DefaultBackendImage  = "ghcr.io/ske-labs/backend:latest"
+	DefaultFrontendImage = "ghcr.io/ske-labs/frontend:latest"
 	PostgresImage        = "postgres:16-alpine"
 	RedisImage           = "redis:7-alpine"
 	CaddyImage           = "caddy:2-alpine"
