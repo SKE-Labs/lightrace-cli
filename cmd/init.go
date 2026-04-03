@@ -12,7 +12,7 @@ import (
 var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Initialize a new Lightrace project",
-	Long:  "Creates the lightrace/ directory with a config.toml containing auto-generated secrets.",
+	Long:  "Creates the .lightrace/ directory with a config.toml containing auto-generated secrets.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		path := filepath.Join(config.ConfigDir, config.ConfigFile)
 

@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	ConfigDir  = "lightrace"
+	ConfigDir  = ".lightrace"
 	ConfigFile = "config.toml"
 )
 

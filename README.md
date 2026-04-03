@@ -69,7 +69,7 @@ export LIGHTRACE_SECRET_KEY=sk-lt-demo
 
 | Command | Description |
 |---------|-------------|
-| `lightrace init` | Create `lightrace/config.toml` with auto-generated secrets |
+| `lightrace init` | Create `.lightrace/config.toml` with auto-generated secrets |
 | `lightrace start` | Pull images and start all services |
 | `lightrace stop` | Stop and remove all containers |
 | `lightrace status` | Show service URLs, API keys, health |
@@ -109,7 +109,7 @@ Internal services (PostgreSQL, Redis, Backend, Frontend) are not exposed to the 
 
 ## Configuration
 
-`lightrace init` generates `lightrace/config.toml`:
+`lightrace init` generates `.lightrace/config.toml`:
 
 ```toml
 project_id = "my-project"
@@ -146,8 +146,8 @@ Set a `domain` for automatic HTTPS via Let's Encrypt (powered by Caddy).
 ```bash
 git clone https://github.com/SKE-Labs/lightrace-cli.git
 cd lightrace-cli
-go build -o ltrace .
-./ltrace --help
+go build -o lightrace .
+./lightrace --help
 ```
 
 ## License
