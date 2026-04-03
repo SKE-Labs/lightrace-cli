@@ -28,8 +28,8 @@ jobs:
           cd npm
           node -e "const p=require('./package.json'); p.version='$VERSION'; require('fs').writeFileSync('package.json', JSON.stringify(p, null, 2))"
 
-      - name: Install deps
-        run: cd npm && npm install
+      - name: Install deps (skip postinstall — no binary needed for publish)
+        run: cd npm && npm install --ignore-scripts
 
       - name: Publish (OIDC trusted publishing — no token needed)
         run: cd npm && npm publish
