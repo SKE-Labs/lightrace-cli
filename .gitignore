@@ -27,4 +27,4 @@ Thumbs.db
 .env
 
 # Development
-ltrace
+.lightrace
