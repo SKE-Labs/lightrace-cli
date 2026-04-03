@@ -16,11 +16,11 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 20
           registry-url: https://registry.npmjs.org
 
-      - name: Ensure latest npm (trusted publishing requires >= 11.5.1)
-        run: npm install -g npm@latest
+      - name: Ensure npm supports trusted publishing (>= 11.5.1)
+        run: npm install -g npm@11
 
       - name: Set version from tag
         run: |
