@@ -1,0 +1,97 @@
+name: Publish PyPI
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build-wheels:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            wheel_plat: manylinux_2_17_x86_64
+          - os: ubuntu-latest
+            goos: linux
+            goarch: arm64
+            wheel_plat: manylinux_2_17_aarch64
+          - os: macos-latest
+            goos: darwin
+            goarch: arm64
+            wheel_plat: macosx_11_0_arm64
+          - os: macos-13
+            goos: darwin
+            goarch: amd64
+            wheel_plat: macosx_10_9_x86_64
+          - os: ubuntu-latest
+            goos: windows
+            goarch: amd64
+            wheel_plat: win_amd64
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
+
+      - name: Cross-compile Go binary
+        run: |
+          mkdir -p pypi/lightrace_cli
+          BINARY_NAME="lightrace"
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            BINARY_NAME="lightrace.exe"
+          fi
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} CGO_ENABLED=0 \
+            go build -trimpath -ldflags "-s -w -X github.com/SKE-Labs/lightrace-cli/cmd.Version=$VERSION" \
+            -o pypi/lightrace_cli/$BINARY_NAME .
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+
+      - name: Set wheel version
+        run: |
+          cd pypi
+          sed -i.bak "s/version = \"0.0.0\"/version = \"$VERSION\"/" pyproject.toml
+          rm -f pyproject.toml.bak
+
+      - name: Build wheel
+        run: |
+          pip install wheel hatchling
+          cd pypi
+          python -m hatchling build -t wheel
+          # Rename wheel to platform-specific tag
+          for f in dist/*.whl; do
+            NEW_NAME=$(echo "$f" | sed "s/py3-none-any/${{ matrix.wheel_plat }}/; s/none-any/py3-${{ matrix.wheel_plat }}/")
+            mv "$f" "$NEW_NAME" 2>/dev/null || true
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheel-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: pypi/dist/*.whl
+
+  publish:
+    needs: build-wheels
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist
