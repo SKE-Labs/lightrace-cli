@@ -113,7 +113,7 @@ func Run(ctx context.Context, cfg *config.Config, opts Options) error {
 				"WS_PORT=3003",
 				fmt.Sprintf("INTERNAL_SECRET=%s", cfg.Internal.Secret),
 			},
-			HealthCmd: []string{"wget -qO- http://localhost:3002/health || exit 1"},
+			HealthCmd: []string{"wget -qO- http://127.0.0.1:3002/health || exit 1"},
 		}); err != nil {
 			return err
 		}
@@ -144,7 +144,7 @@ func Run(ctx context.Context, cfg *config.Config, opts Options) error {
 				fmt.Sprintf("INTERNAL_SECRET=%s", cfg.Internal.Secret),
 				"WS_PORT=3003",
 			},
-			HealthCmd: []string{"wget -qO- http://localhost:3001/api/public/health || exit 1"},
+			HealthCmd: []string{"wget -qO- http://127.0.0.1:3001/api/public/health || exit 1"},
 		}); err != nil {
 			return err
 		}
@@ -175,7 +175,7 @@ func Run(ctx context.Context, cfg *config.Config, opts Options) error {
 			Volumes: map[string]string{
 				absCaddyfile: "/etc/caddy/Caddyfile",
 			},
-			HealthCmd: []string{fmt.Sprintf("wget -qO- http://localhost:%d/health || exit 1", cfg.Gateway.Port)},
+			HealthCmd: []string{fmt.Sprintf("wget -qO- http://127.0.0.1:%d/health || exit 1", cfg.Gateway.Port)},
 		}); err != nil {
 			return err
 		}
