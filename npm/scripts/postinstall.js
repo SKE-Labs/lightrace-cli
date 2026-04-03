@@ -35,16 +35,23 @@ const readPackageJson = async () => {
   return JSON.parse(contents);
 };
 
+const getRepo = (pkg) => {
+  const url = typeof pkg.repository === "string" ? pkg.repository : pkg.repository.url;
+  const match = url.match(/github\.com\/([^/]+\/[^/.]+)/);
+  if (!match) throw new Error(`Cannot parse repository URL: ${url}`);
+  return match[1];
+};
+
 const getDownloadUrl = (pkg) => {
   const version = pkg.version;
-  const repo = pkg.repository;
+  const repo = getRepo(pkg);
   const ext = platform === "windows" ? "zip" : "tar.gz";
   return `https://github.com/${repo}/releases/download/v${version}/lightrace_${version}_${platform}_${arch}.${ext}`;
 };
 
 const getChecksumUrl = (pkg) => {
   const version = pkg.version;
-  const repo = pkg.repository;
+  const repo = getRepo(pkg);
   return `https://github.com/${repo}/releases/download/v${version}/checksums.txt`;
 };
 
