@@ -53,8 +53,10 @@ func EnsureNetwork(ctx context.Context, projectID string) error {
 	if err != nil {
 		return err
 	}
-	if len(networks) > 0 {
-		return nil
+	for _, n := range networks {
+		if n.Name == name {
+			return nil
+		}
 	}
 
 	_, err = c.NetworkCreate(ctx, name, network.CreateOptions{
@@ -231,5 +233,19 @@ func RemoveNetwork(ctx context.Context, projectID string) error {
 	if err != nil {
 		return err
 	}
-	return c.NetworkRemove(ctx, NetworkName(projectID))
+
+	// Find networks by label to clean up both old and new naming patterns.
+	networks, err := c.NetworkList(ctx, network.ListOptions{
+		Filters: filters.NewArgs(filters.Arg("label", LabelProject+"="+projectID)),
+	})
+	if err != nil {
+		return err
+	}
+
+	for _, n := range networks {
+		if err := c.NetworkRemove(ctx, n.ID); err != nil {
+			return err
+		}
+	}
+	return nil
 }
