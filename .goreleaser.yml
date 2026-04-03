@@ -24,11 +24,13 @@ builds:
 
 archives:
   - id: default
-    format: tar.gz
+    formats:
+      - tar.gz
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     format_overrides:
       - goos: windows
-        format: zip
+        formats:
+          - zip
 
 brews:
   - repository:
@@ -44,6 +46,7 @@ brews:
 nfpms:
   - id: packages
     package_name: lightrace
+    maintainer: SKE Labs <support@skelabs.dev>
     vendor: SKE Labs
     homepage: https://github.com/SKE-Labs/lightrace
     description: CLI for self-hosting Lightrace — LLM tracing and observability
@@ -71,3 +74,4 @@ changelog:
 release:
   draft: true
   prerelease: auto
+  replace_existing_artifacts: true
