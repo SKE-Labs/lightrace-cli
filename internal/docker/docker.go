@@ -77,8 +77,7 @@ func PullImage(ctx context.Context, img string) error {
 		return fmt.Errorf("pulling %s: %w", img, err)
 	}
 	defer reader.Close()
-	_, _ = io.Copy(os.Stdout, reader)
-	return nil
+	return renderPullProgress(reader, img)
 }
 
 type RunConfig struct {
@@ -87,7 +86,7 @@ type RunConfig struct {
 	Image        string
 	Env          []string
 	Ports        map[string]string // container port -> host port
-	Volumes      map[string]string // host path -> container path
+	Volumes      map[string]string // source -> container path (named volume or host path)
 	HealthCmd    []string
 	NetworkName  string
 	NetworkAlias string
@@ -291,6 +290,22 @@ func StopContainers(ctx context.Context, projectID string) error {
 	}
 
 	return nil
+}
+
+func PgVolumeName(projectID string) string {
+	return projectID + "_pgdata"
+}
+
+func RedisVolumeName(projectID string) string {
+	return projectID + "_redisdata"
+}
+
+func RemoveVolume(ctx context.Context, name string) error {
+	c, err := Client()
+	if err != nil {
+		return err
+	}
+	return c.VolumeRemove(ctx, name, true)
 }
 
 func RemoveNetwork(ctx context.Context, projectID string) error {

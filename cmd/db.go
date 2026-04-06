@@ -58,10 +58,8 @@ func runMigrator(cmd *cobra.Command, cfg *config.Config, cmdOverride []string) e
 		Image:        config.DefaultMigratorImage,
 		NetworkName:  networkName,
 		NetworkAlias: "lightrace-migrate",
-		Env: []string{
-			fmt.Sprintf("DATABASE_URL=postgresql://lightrace:%s@lightrace-db:5432/lightrace", cfg.DB.Password),
-		},
-		Cmd: cmdOverride,
+		Env:          cfg.SeedEnv(),
+		Cmd:          cmdOverride,
 	})
 	if err != nil {
 		return err

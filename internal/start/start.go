@@ -10,6 +10,8 @@ import (
 	"github.com/SKE-Labs/lightrace-cli/internal/config"
 	"github.com/SKE-Labs/lightrace-cli/internal/docker"
 	"github.com/SKE-Labs/lightrace-cli/internal/gateway"
+	"github.com/SKE-Labs/lightrace-cli/internal/prompt"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type Options struct {
@@ -27,6 +29,13 @@ func isExcluded(name string, exclude []string) bool {
 }
 
 func Run(ctx context.Context, cfg *config.Config, opts Options) error {
+	// 0. First-time user setup
+	if !cfg.UserConfigured() {
+		if err := promptUserSetup(cfg); err != nil {
+			return fmt.Errorf("user setup: %w", err)
+		}
+	}
+
 	networkName := docker.NetworkName(cfg.ProjectID)
 
 	// 1. Ensure Docker network
@@ -36,9 +45,9 @@ func Run(ctx context.Context, cfg *config.Config, opts Options) error {
 	}
 
 	// 2. Pull images in sequence (could be parallelized later)
+	fmt.Println("Pulling images...")
 	images := []string{config.PostgresImage, config.RedisImage, config.DefaultMigratorImage, cfg.BackendImage(), cfg.FrontendImage(), config.CaddyImage}
 	for _, img := range images {
-		fmt.Printf("Pulling %s...\n", img)
 		if err := docker.PullImage(ctx, img); err != nil {
 			return err
 		}
@@ -62,7 +71,10 @@ func Run(ctx context.Context, cfg *config.Config, opts Options) error {
 				fmt.Sprintf("POSTGRES_PASSWORD=%s", cfg.DB.Password),
 				"POSTGRES_DB=lightrace",
 			},
-			Ports:     ports,
+			Ports: ports,
+			Volumes: map[string]string{
+				docker.PgVolumeName(cfg.ProjectID): "/var/lib/postgresql/data",
+			},
 			HealthCmd: []string{"pg_isready -U lightrace"},
 		}); err != nil {
 			return err
@@ -87,7 +99,11 @@ func Run(ctx context.Context, cfg *config.Config, opts Options) error {
 			NetworkName:  networkName,
 			NetworkAlias: "lightrace-redis",
 			Ports:        ports,
-			HealthCmd:    []string{"redis-cli ping"},
+			Volumes: map[string]string{
+				docker.RedisVolumeName(cfg.ProjectID): "/data",
+			},
+			Cmd:       []string{"redis-server", "--appendonly", "yes"},
+			HealthCmd: []string{"redis-cli ping"},
 		}); err != nil {
 			return err
 		}
@@ -97,8 +113,10 @@ func Run(ctx context.Context, cfg *config.Config, opts Options) error {
 		}
 	}
 
-	// 5. Run database migrations
+	// 5. Run database migrations and seed
 	if !isExcluded("postgres", opts.Exclude) {
+		migratorEnv := cfg.SeedEnv()
+
 		fmt.Println("Running migrations...")
 		exitCode, err := docker.RunOnce(ctx, docker.RunConfig{
 			ProjectID:    cfg.ProjectID,
@@ -106,9 +124,7 @@ func Run(ctx context.Context, cfg *config.Config, opts Options) error {
 			Image:        config.DefaultMigratorImage,
 			NetworkName:  networkName,
 			NetworkAlias: "lightrace-migrate",
-			Env: []string{
-				fmt.Sprintf("DATABASE_URL=postgresql://lightrace:%s@lightrace-db:5432/lightrace", cfg.DB.Password),
-			},
+			Env:          migratorEnv,
 		})
 		if err != nil {
 			return fmt.Errorf("migration failed: %w", err)
@@ -116,9 +132,29 @@ func Run(ctx context.Context, cfg *config.Config, opts Options) error {
 		if exitCode != 0 {
 			return fmt.Errorf("migration exited with code %d", exitCode)
 		}
+
+		fmt.Println("Seeding database...")
+		seedCode, seedErr := docker.RunOnce(ctx, docker.RunConfig{
+			ProjectID:    cfg.ProjectID,
+			Service:      "seed",
+			Image:        config.DefaultMigratorImage,
+			NetworkName:  networkName,
+			NetworkAlias: "lightrace-seed",
+			Env:          migratorEnv,
+			Cmd: []string{
+				"pnpm", "--filter", "@lightrace/shared", "exec",
+				"tsx", "./prisma/seed.ts",
+			},
+		})
+		if seedErr != nil {
+			return fmt.Errorf("seeding failed: %w", seedErr)
+		}
+		if seedCode != 0 {
+			return fmt.Errorf("seed exited with code %d", seedCode)
+		}
 	}
 
-	// 6. Start Backend
+	// 6. Start backend
 	if !isExcluded("backend", opts.Exclude) {
 		fmt.Println("Starting Backend...")
 		if _, err := docker.RunContainer(ctx, docker.RunConfig{
@@ -128,7 +164,7 @@ func Run(ctx context.Context, cfg *config.Config, opts Options) error {
 			NetworkName:  networkName,
 			NetworkAlias: "lightrace-backend",
 			Env: []string{
-				fmt.Sprintf("DATABASE_URL=postgresql://lightrace:%s@lightrace-db:5432/lightrace", cfg.DB.Password),
+				fmt.Sprintf("DATABASE_URL=%s", cfg.DatabaseURL()),
 				"REDIS_URL=redis://lightrace-redis:6379",
 				"PORT=3002",
 				"WS_PORT=3003",
@@ -144,7 +180,7 @@ func Run(ctx context.Context, cfg *config.Config, opts Options) error {
 		}
 	}
 
-	// 6. Start Frontend
+	// 7. Start frontend
 	if !isExcluded("frontend", opts.Exclude) {
 		publicURL := cfg.PublicURL()
 
@@ -156,7 +192,7 @@ func Run(ctx context.Context, cfg *config.Config, opts Options) error {
 			NetworkName:  networkName,
 			NetworkAlias: "lightrace-frontend",
 			Env: []string{
-				fmt.Sprintf("DATABASE_URL=postgresql://lightrace:%s@lightrace-db:5432/lightrace", cfg.DB.Password),
+				fmt.Sprintf("DATABASE_URL=%s", cfg.DatabaseURL()),
 				"REDIS_URL=redis://lightrace-redis:6379",
 				fmt.Sprintf("AUTH_SECRET=%s", cfg.Auth.Secret),
 				fmt.Sprintf("AUTH_URL=%s", publicURL),
@@ -175,7 +211,7 @@ func Run(ctx context.Context, cfg *config.Config, opts Options) error {
 		}
 	}
 
-	// 7. Generate Caddyfile and start Caddy
+	// 8. Generate Caddyfile and start Caddy
 	if !isExcluded("caddy", opts.Exclude) {
 		fmt.Println("Starting Caddy gateway...")
 		caddyfilePath, err := gateway.GenerateCaddyfile(cfg)
@@ -206,9 +242,59 @@ func Run(ctx context.Context, cfg *config.Config, opts Options) error {
 		}
 	}
 
-	// 8. Print status
+	// 9. Print status
 	fmt.Println()
 	printStatus(cfg, os.Stdout)
+
+	return nil
+}
+
+func promptUserSetup(cfg *config.Config) error {
+	if !prompt.IsInteractive() {
+		return nil
+	}
+
+	fmt.Println("First-time setup — configure your Lightrace user:")
+	fmt.Println()
+
+	email, err := prompt.ReadLine("Email", "")
+	if err != nil {
+		return err
+	}
+	if email == "" {
+		return fmt.Errorf("email cannot be empty")
+	}
+
+	password, err := prompt.ReadLine("Password", "")
+	if err != nil {
+		return err
+	}
+	if password == "" {
+		return fmt.Errorf("password cannot be empty")
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), 12)
+	if err != nil {
+		return fmt.Errorf("hashing password: %w", err)
+	}
+
+	projectName, err := prompt.ReadLine("Project name", "My Project")
+	if err != nil {
+		return err
+	}
+
+	cfg.User = config.UserConfig{
+		Email:        email,
+		PasswordHash: string(hash),
+		ProjectName:  projectName,
+	}
+
+	if err := cfg.Write(); err != nil {
+		return fmt.Errorf("saving config: %w", err)
+	}
+
+	fmt.Println("  Saved to config.toml")
+	fmt.Println()
 
 	return nil
 }
@@ -222,7 +308,11 @@ func printStatus(cfg *config.Config, w *os.File) {
 	fmt.Fprintf(w, "  API:          %s/api/public\n", url)
 	fmt.Fprintf(w, "  OTLP:         %s/api/public/otel/v1/traces\n", url)
 	fmt.Fprintln(w)
-	fmt.Fprintln(w, "  Login:        demo@lightrace.dev / password")
+	if cfg.UserConfigured() {
+		fmt.Fprintf(w, "  Login:        %s / **********\n", cfg.User.Email)
+	} else {
+		fmt.Fprintln(w, "  Login:        demo@lightrace.dev / password")
+	}
 	fmt.Fprintf(w, "  Public Key:   %s\n", cfg.APIKeys.PublicKey)
 	fmt.Fprintf(w, "  Secret Key:   %s\n", cfg.APIKeys.SecretKey)
 	fmt.Fprintln(w)

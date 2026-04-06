@@ -24,6 +24,7 @@ type Config struct {
 	APIKeys   APIKeysConfig `toml:"api_keys"`
 	Images    ImagesConfig  `toml:"images"`
 	Internal  InternalConfig `toml:"internal"`
+	User      UserConfig     `toml:"user,omitempty"`
 }
 
 type GatewayConfig struct {
@@ -58,6 +59,13 @@ type InternalConfig struct {
 	Secret string `toml:"secret"`
 }
 
+type UserConfig struct {
+	Email        string `toml:"email,omitempty"`
+	PasswordHash string `toml:"password_hash,omitempty"`
+	Name         string `toml:"name,omitempty"`
+	ProjectName  string `toml:"project_name,omitempty"`
+}
+
 // Default image versions — pinned per CLI release.
 const (
 	DefaultBackendImage  = "ghcr.io/ske-labs/backend:latest"
@@ -80,6 +88,33 @@ func (c *Config) PublicURL() string {
 		return fmt.Sprintf("https://%s", c.Gateway.Domain)
 	}
 	return fmt.Sprintf("http://localhost:%d", c.Gateway.Port)
+}
+
+func (c *Config) UserConfigured() bool {
+	return c.User.Email != "" && c.User.PasswordHash != ""
+}
+
+func (c *Config) DatabaseURL() string {
+	return fmt.Sprintf("postgresql://lightrace:%s@lightrace-db:5432/lightrace", c.DB.Password)
+}
+
+func (c *Config) SeedEnv() []string {
+	env := []string{
+		fmt.Sprintf("DATABASE_URL=%s", c.DatabaseURL()),
+	}
+	if c.UserConfigured() {
+		env = append(env,
+			fmt.Sprintf("SEED_USER_EMAIL=%s", c.User.Email),
+			fmt.Sprintf("SEED_USER_PASSWORD_HASH=%s", c.User.PasswordHash),
+			fmt.Sprintf("SEED_USER_NAME=%s", c.User.Name),
+			fmt.Sprintf("SEED_PROJECT_NAME=%s", c.User.ProjectName),
+		)
+	}
+	env = append(env,
+		fmt.Sprintf("SEED_PUBLIC_KEY=%s", c.APIKeys.PublicKey),
+		fmt.Sprintf("SEED_SECRET_KEY=%s", c.APIKeys.SecretKey),
+	)
+	return env
 }
 
 func (c *Config) FrontendImage() string {

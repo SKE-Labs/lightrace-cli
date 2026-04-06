@@ -84,7 +84,11 @@ func printPretty(cfg *config.Config, containers []container.Summary, url string)
 	fmt.Printf("  API:          %s/api/public\n", url)
 	fmt.Printf("  OTLP:         %s/api/public/otel/v1/traces\n", url)
 	fmt.Println()
-	fmt.Println("  Login:        demo@lightrace.dev / password")
+	if cfg.UserConfigured() {
+		fmt.Printf("  Login:        %s / **********\n", cfg.User.Email)
+	} else {
+		fmt.Println("  Login:        demo@lightrace.dev / password")
+	}
 	fmt.Printf("  Public Key:   %s\n", cfg.APIKeys.PublicKey)
 	fmt.Printf("  Secret Key:   %s\n", cfg.APIKeys.SecretKey)
 

@@ -8,12 +8,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var stopBackup bool
+var stopPurge bool
 
 var stopCmd = &cobra.Command{
 	Use:   "stop",
 	Short: "Stop the Lightrace server",
-	Long:  "Stops and removes all Lightrace containers. Use --backup to also remove data volumes.",
+	Long:  "Stops and removes all Lightrace containers. Use --purge to also remove data volumes.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg, err := config.Load()
 		if err != nil {
@@ -28,20 +28,29 @@ var stopCmd = &cobra.Command{
 		}
 
 		if err := docker.RemoveNetwork(ctx, cfg.ProjectID); err != nil {
-			// Network removal is best-effort
 			fmt.Printf("  Warning: could not remove network: %v\n", err)
 		}
 
-		fmt.Println("Lightrace stopped.")
-
-		if stopBackup {
-			fmt.Println("Note: Data volumes were NOT removed. Use 'docker volume rm' to clean up manually.")
+		if stopPurge {
+			fmt.Println("Removing data volumes...")
+			for _, vol := range []string{
+				docker.PgVolumeName(cfg.ProjectID),
+				docker.RedisVolumeName(cfg.ProjectID),
+			} {
+				if err := docker.RemoveVolume(ctx, vol); err != nil {
+					fmt.Printf("  Warning: could not remove volume %s: %v\n", vol, err)
+				} else {
+					fmt.Printf("  Removed %s\n", vol)
+				}
+			}
 		}
+
+		fmt.Println("Lightrace stopped.")
 
 		return nil
 	},
 }
 
 func init() {
-	stopCmd.Flags().BoolVar(&stopBackup, "backup", false, "Also remove data volumes")
+	stopCmd.Flags().BoolVar(&stopPurge, "purge", false, "Also remove data volumes")
 }
