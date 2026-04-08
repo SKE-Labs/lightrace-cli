@@ -170,7 +170,8 @@ func Run(ctx context.Context, cfg *config.Config, opts Options) error {
 				"WS_PORT=3003",
 				fmt.Sprintf("INTERNAL_SECRET=%s", cfg.Internal.Secret),
 			},
-			HealthCmd: []string{"wget -qO- http://127.0.0.1:3002/health || exit 1"},
+			HealthCmd:  []string{"wget -qO- http://127.0.0.1:3002/health || exit 1"},
+			ExtraHosts: []string{"host.docker.internal:host-gateway"},
 		}); err != nil {
 			return err
 		}

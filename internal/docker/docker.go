@@ -91,6 +91,7 @@ type RunConfig struct {
 	NetworkName  string
 	NetworkAlias string
 	Cmd          []string
+	ExtraHosts   []string // e.g. "host.docker.internal:host-gateway"
 }
 
 func RunContainer(ctx context.Context, rc RunConfig) (string, error) {
@@ -142,6 +143,7 @@ func RunContainer(ctx context.Context, rc RunConfig) (string, error) {
 		PortBindings:  portBindings,
 		Binds:         binds,
 		RestartPolicy: container.RestartPolicy{Name: "unless-stopped"},
+		ExtraHosts:    rc.ExtraHosts,
 	}
 
 	networkConfig := &network.NetworkingConfig{}
