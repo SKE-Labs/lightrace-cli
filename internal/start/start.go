@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/SKE-Labs/lightrace-cli/internal/config"
@@ -284,10 +286,13 @@ func promptUserSetup(cfg *config.Config) error {
 		return err
 	}
 
+	projectDBID := slugify(projectName) + "-" + config.RandomHex(4)
+
 	cfg.User = config.UserConfig{
 		Email:        email,
 		PasswordHash: string(hash),
 		ProjectName:  projectName,
+		ProjectDBID:  projectDBID,
 	}
 
 	if err := cfg.Write(); err != nil {
@@ -318,3 +323,16 @@ func printStatus(cfg *config.Config, w *os.File) {
 	fmt.Fprintf(w, "  Secret Key:   %s\n", cfg.APIKeys.SecretKey)
 	fmt.Fprintln(w)
 }
+
+var nonAlphaNum = regexp.MustCompile(`[^a-z0-9]+`)
+
+func slugify(s string) string {
+	slug := strings.ToLower(strings.TrimSpace(s))
+	slug = nonAlphaNum.ReplaceAllString(slug, "-")
+	slug = strings.Trim(slug, "-")
+	if slug == "" {
+		slug = "project"
+	}
+	return slug
+}
+

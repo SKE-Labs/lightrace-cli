@@ -64,6 +64,7 @@ type UserConfig struct {
 	PasswordHash string `toml:"password_hash,omitempty"`
 	Name         string `toml:"name,omitempty"`
 	ProjectName  string `toml:"project_name,omitempty"`
+	ProjectDBID  string `toml:"project_db_id,omitempty"`
 }
 
 // Default image versions — pinned per CLI release.
@@ -109,6 +110,9 @@ func (c *Config) SeedEnv() []string {
 			fmt.Sprintf("SEED_USER_NAME=%s", c.User.Name),
 			fmt.Sprintf("SEED_PROJECT_NAME=%s", c.User.ProjectName),
 		)
+		if c.User.ProjectDBID != "" {
+			env = append(env, fmt.Sprintf("SEED_PROJECT_ID=%s", c.User.ProjectDBID))
+		}
 	}
 	env = append(env,
 		fmt.Sprintf("SEED_PUBLIC_KEY=%s", c.APIKeys.PublicKey),
@@ -160,14 +164,14 @@ func GenerateDefault(projectID string) *Config {
 			Password: "lightrace",
 		},
 		Auth: AuthConfig{
-			Secret: randomHex(32),
+			Secret: RandomHex(32),
 		},
 		APIKeys: APIKeysConfig{
 			PublicKey: "pk-lt-demo",
 			SecretKey: "sk-lt-demo",
 		},
 		Internal: InternalConfig{
-			Secret: randomHex(32),
+			Secret: RandomHex(32),
 		},
 	}
 }
@@ -188,7 +192,7 @@ func (c *Config) Write() error {
 	return encoder.Encode(c)
 }
 
-func randomHex(n int) string {
+func RandomHex(n int) string {
 	b := make([]byte, n)
 	if _, err := rand.Read(b); err != nil {
 		panic(err)
